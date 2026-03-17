@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       // Busca o tenant pelo phone_number_id
       const { data: tenant, error: tenantError } = await supabase
         .from('tenants')
-        .select('id')
+        .select('id, n8n_webhook_url')
         .eq('meta_phone_number_id', phoneNumberId)
         .single()
 
@@ -122,6 +122,16 @@ export async function POST(req: NextRequest) {
           .from('conversations')
           .update({ last_message_at: new Date(Number(msg.timestamp) * 1000).toISOString() })
           .eq('id', conversation.id)
+
+        // Encaminha para o webhook do n8n do cliente (não bloqueia a resposta)
+        const n8nUrl = (tenant as { id: string; n8n_webhook_url?: string }).n8n_webhook_url
+        if (n8nUrl) {
+          fetch(n8nUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(change.value),
+          }).catch(err => console.error('[webhook] n8n forward error:', err))
+        }
       }
 
       // -------------------------------------------------------

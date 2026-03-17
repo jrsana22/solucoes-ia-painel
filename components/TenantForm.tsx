@@ -14,6 +14,7 @@ export default function TenantForm({ initial, onSuccess, onCancel }: TenantFormP
   const [name, setName] = useState(initial?.name ?? '')
   const [phoneId, setPhoneId] = useState(initial?.meta_phone_number_id ?? '')
   const [token, setToken] = useState('')
+  const [n8nUrl, setN8nUrl] = useState(initial?.n8n_webhook_url ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showToken, setShowToken] = useState(false)
@@ -38,6 +39,7 @@ export default function TenantForm({ initial, onSuccess, onCancel }: TenantFormP
         meta_phone_number_id: phoneId.trim(),
       }
       if (token.trim()) body.meta_access_token = token.trim()
+      if (n8nUrl.trim()) body.n8n_webhook_url = n8nUrl.trim()
 
       const res = await fetch(url, {
         method,
@@ -129,6 +131,24 @@ export default function TenantForm({ initial, onSuccess, onCancel }: TenantFormP
         </div>
         <p className="text-xs text-gray-400 mt-1">
           Meta Developer Console → System User → Generate Token (token permanente)
+        </p>
+      </div>
+
+      {/* Webhook n8n */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Webhook do Agente IA (n8n)
+          <span className="text-gray-400 font-normal ml-1">(opcional)</span>
+        </label>
+        <input
+          type="url"
+          value={n8nUrl}
+          onChange={e => setN8nUrl(e.target.value)}
+          placeholder="https://seu-n8n.com/webhook/..."
+          className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <p className="text-xs text-gray-400 mt-1">
+          Quando o contato responder, a mensagem será encaminhada para este webhook automaticamente
         </p>
       </div>
 

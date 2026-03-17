@@ -7,7 +7,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('tenants')
-    .select('id, name, meta_phone_number_id, created_at')
+    .select('id, name, meta_phone_number_id, n8n_webhook_url, created_at')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -19,7 +19,7 @@ export async function GET() {
 
 // POST /api/tenants — cria novo tenant
 export async function POST(req: NextRequest) {
-  let body: { name: string; meta_phone_number_id: string; meta_access_token: string }
+  let body: { name: string; meta_phone_number_id: string; meta_access_token: string; n8n_webhook_url?: string }
 
   try {
     body = await req.json()
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
   }
 
-  const { name, meta_phone_number_id, meta_access_token } = body
+  const { name, meta_phone_number_id, meta_access_token, n8n_webhook_url } = body
 
   if (!name?.trim() || !meta_phone_number_id?.trim() || !meta_access_token?.trim()) {
     return NextResponse.json(
@@ -44,8 +44,9 @@ export async function POST(req: NextRequest) {
       name: name.trim(),
       meta_phone_number_id: meta_phone_number_id.trim(),
       meta_access_token: meta_access_token.trim(),
+      n8n_webhook_url: n8n_webhook_url?.trim() || null,
     })
-    .select('id, name, meta_phone_number_id, created_at')
+    .select('id, name, meta_phone_number_id, n8n_webhook_url, created_at')
     .single()
 
   if (error) {

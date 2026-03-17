@@ -8,6 +8,7 @@ export interface Tenant {
   name: string
   meta_phone_number_id: string
   meta_access_token: string
+  n8n_webhook_url: string | null
   created_at: string
 }
 
