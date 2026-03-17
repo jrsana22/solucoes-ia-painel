@@ -40,7 +40,6 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
       `)
       .eq('tenant_id', tenantId)
       .order('last_message_at', { ascending: false })
-      .limit(1, { referencedTable: 'messages' })
 
     console.log('[ConversationList] data:', data, 'tenantId:', tenantId)
     const { data: session } = await supabase.auth.getSession()
