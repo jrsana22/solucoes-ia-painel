@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
         .eq('meta_phone_number_id', phoneNumberId)
         .single()
 
+      console.log('[webhook] phoneNumberId received:', JSON.stringify(phoneNumberId))
       if (tenantError) console.error('[webhook] tenant error:', tenantError)
       if (!tenant) { console.error('[webhook] tenant not found for phoneNumberId:', phoneNumberId); continue }
 
