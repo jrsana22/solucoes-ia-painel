@@ -66,10 +66,34 @@ export async function POST(req: NextRequest) {
       // Mensagens recebidas
       // -------------------------------------------------------
       for (const msg of value.messages ?? []) {
-        if (msg.type !== 'text' || !msg.text?.body) continue
+        // Suporta: text, audio, image, document
+        const supportedTypes = ['text', 'audio', 'image', 'document']
+        if (!supportedTypes.includes(msg.type)) continue
+
+        // Extrai body e mídia dependendo do tipo
+        let body = ''
+        let mediaType: string | null = null
+        let mediaId: string | null = null
+
+        if (msg.type === 'text') {
+          if (!msg.text?.body) continue
+          body = msg.text.body
+        } else if (msg.type === 'audio') {
+          body = '[Áudio]'
+          mediaType = 'audio'
+          mediaId = msg.audio?.id ?? null
+        } else if (msg.type === 'image') {
+          body = msg.image?.caption ?? '[Imagem]'
+          mediaType = 'image'
+          mediaId = msg.image?.id ?? null
+        } else if (msg.type === 'document') {
+          body = msg.document?.filename ?? '[Documento]'
+          mediaType = 'document'
+          mediaId = msg.document?.id ?? null
+        }
 
         const senderPhone = msg.from
-        const senderName = value.contacts?.find(c => c.wa_id === senderPhone)?.profile?.name ?? null
+        const senderName = value.contacts?.find((c: { wa_id: string }) => c.wa_id === senderPhone)?.profile?.name ?? null
 
         // Upsert do contato (salva nome se disponível)
         const { data: contact, error: contactError } = await supabase
@@ -108,7 +132,9 @@ export async function POST(req: NextRequest) {
             conversation_id: conversation.id,
             tenant_id: tenant.id,
             direction: 'inbound',
-            body: msg.text.body,
+            body,
+            media_type: mediaType,
+            media_id: mediaId,
             status: 'delivered',
             timestamp: new Date(Number(msg.timestamp) * 1000).toISOString(),
             sent_by: 'system',

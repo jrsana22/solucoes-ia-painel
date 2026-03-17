@@ -42,5 +42,7 @@ export interface Message {
   timestamp: string
   sent_by: MessageSentBy
   meta_message_id: string | null
+  media_type: 'audio' | 'image' | 'document' | null
+  media_id: string | null
   created_at: string
 }
