@@ -51,14 +51,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               Conversas
             </Link>
             {isAdmin && (
-              <>
-                <Link href="/dashboard/clientes" className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${pathname === '/dashboard/clientes' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}>
-                  Clientes
-                </Link>
-                <Link href="/dashboard/usuarios" className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${pathname === '/dashboard/usuarios' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}>
-                  Usuários
-                </Link>
-              </>
+              <Link href="/dashboard/usuarios" className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${pathname === '/dashboard/usuarios' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}>
+                Agentes
+              </Link>
             )}
           </nav>
         </div>
