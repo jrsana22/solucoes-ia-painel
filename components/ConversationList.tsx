@@ -31,26 +31,11 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
   const supabase = createClient()
 
   const fetchConversations = useCallback(async () => {
-    // 1. Busca conversas
-    const { data: convData, error: convError } = await supabase
-      .from('conversations')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .order('last_message_at', { ascending: false })
-
-    console.log('[Conv] convData:', convData, 'error:', convError)
-    if (!convData || convData.length === 0) { setLoading(false); return }
-
-    // 2. Busca contatos e última mensagem para cada conversa
-    const enriched = await Promise.all(convData.map(async (conv) => {
-      const [{ data: contactData }, { data: msgs }] = await Promise.all([
-        supabase.from('contacts').select('id, phone, name').eq('id', conv.contact_id).single(),
-        supabase.from('messages').select('body, direction, sent_by, timestamp, status').eq('conversation_id', conv.id).order('timestamp', { ascending: false }).limit(1),
-      ])
-      return { ...conv, contact: contactData ?? null, last_message: msgs?.[0] ?? null }
-    }))
-
-    setConversations(enriched as Conversation[])
+    const res = await fetch(`/api/conversations?tenant_id=${tenantId}`)
+    const json = await res.json()
+    if (json.conversations) {
+      setConversations(json.conversations as Conversation[])
+    }
     setLoading(false)
   }, [tenantId]) // eslint-disable-line react-hooks/exhaustive-deps
 
