@@ -31,29 +31,27 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
   const supabase = createClient()
 
   const fetchConversations = useCallback(async () => {
-    const { data } = await supabase
+    // Busca conversas com contato
+    const { data: convData } = await supabase
       .from('conversations')
-      .select(`
-        *,
-        contact:contacts(id, phone, name),
-        last_message:messages(body, direction, sent_by, timestamp, status)
-      `)
+      .select('*, contact:contacts(id, phone, name)')
       .eq('tenant_id', tenantId)
       .order('last_message_at', { ascending: false })
 
-    console.log('[ConversationList] data:', data, 'tenantId:', tenantId)
-    const { data: session } = await supabase.auth.getSession()
-    console.log('[ConversationList] session uid:', session?.session?.user?.id)
-    if (data) {
-      // Normaliza last_message (Supabase retorna array do join)
-      const normalized = data.map((c: Conversation & { last_message: unknown }) => ({
-        ...c,
-        last_message: Array.isArray(c.last_message)
-          ? c.last_message[c.last_message.length - 1]
-          : c.last_message,
-      }))
-      setConversations(normalized as Conversation[])
-    }
+    if (!convData) { setLoading(false); return }
+
+    // Busca a última mensagem de cada conversa separadamente
+    const enriched = await Promise.all(convData.map(async (conv) => {
+      const { data: msgs } = await supabase
+        .from('messages')
+        .select('body, direction, sent_by, timestamp, status')
+        .eq('conversation_id', conv.id)
+        .order('timestamp', { ascending: false })
+        .limit(1)
+      return { ...conv, last_message: msgs?.[0] ?? null }
+    }))
+
+    setConversations(enriched as Conversation[])
     setLoading(false)
   }, [tenantId]) // eslint-disable-line react-hooks/exhaustive-deps
 
