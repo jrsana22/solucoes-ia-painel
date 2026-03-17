@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import type { Conversation, Message } from '@/types'
 import MessageBubble from './MessageBubble'
 import ReplyBox from './ReplyBox'
@@ -15,7 +14,7 @@ export default function ConversationThread({ conversation, tenantId }: Conversat
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
+  const prevCountRef = useRef(0)
 
   const contact = conversation.contact
 
@@ -23,71 +22,37 @@ export default function ConversationThread({ conversation, tenantId }: Conversat
     bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant' })
   }, [])
 
-  // Carrega histórico de mensagens
+  const fetchMessages = useCallback(async (isInitial = false) => {
+    const res = await fetch(`/api/messages?conversation_id=${conversation.id}&tenant_id=${tenantId}`)
+    const json = await res.json()
+    const msgs: Message[] = json.messages ?? []
+    setMessages(msgs)
+    if (isInitial) {
+      setLoading(false)
+    } else if (msgs.length > prevCountRef.current) {
+      setTimeout(() => scrollToBottom(true), 50)
+    }
+    prevCountRef.current = msgs.length
+  }, [conversation.id, tenantId, scrollToBottom])
+
+  // Carrega mensagens iniciais
   useEffect(() => {
     setLoading(true)
     setMessages([])
-
-    supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', conversation.id)
-      .eq('tenant_id', tenantId)
-      .order('timestamp', { ascending: true })
-      .then(({ data }) => {
-        setMessages((data as Message[]) ?? [])
-        setLoading(false)
-      })
-  }, [conversation.id, tenantId]) // eslint-disable-line react-hooks/exhaustive-deps
+    prevCountRef.current = 0
+    fetchMessages(true)
+  }, [conversation.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scroll para o final ao carregar
   useEffect(() => {
     if (!loading) scrollToBottom()
   }, [loading, scrollToBottom])
 
-  // Realtime — escuta novas mensagens e atualizações de status
+  // Polling a cada 5 segundos para atualizar mensagens
   useEffect(() => {
-    const channel = supabase
-      .channel(`messages:${conversation.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversation.id}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as Message
-          setMessages((prev) => {
-            // Evita duplicatas
-            if (prev.find((m) => m.id === newMsg.id)) return prev
-            return [...prev, newMsg]
-          })
-          setTimeout(() => scrollToBottom(true), 50)
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversation.id}`,
-        },
-        (payload) => {
-          const updated = payload.new as Message
-          setMessages((prev) =>
-            prev.map((m) => (m.id === updated.id ? updated : m))
-          )
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [conversation.id, tenantId, scrollToBottom]) // eslint-disable-line react-hooks/exhaustive-deps
+    const interval = setInterval(() => fetchMessages(false), 5000)
+    return () => clearInterval(interval)
+  }, [fetchMessages])
 
   const contactLabel = contact?.name ?? contact?.phone ?? 'Contato'
   const statusColors: Record<string, string> = {

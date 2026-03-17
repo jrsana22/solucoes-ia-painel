@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import type { Conversation } from '@/types'
 
 interface ConversationListProps {
@@ -28,7 +27,6 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const supabase = createClient()
 
   const fetchConversations = useCallback(async () => {
     const res = await fetch(`/api/conversations?tenant_id=${tenantId}`)
@@ -37,40 +35,17 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
       setConversations(json.conversations as Conversation[])
     }
     setLoading(false)
-  }, [tenantId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tenantId])
 
   useEffect(() => {
     fetchConversations()
   }, [fetchConversations])
 
-  // Realtime — atualiza lista quando chega mensagem nova ou muda conversa
+  // Polling a cada 5 segundos
   useEffect(() => {
-    const channel = supabase
-      .channel(`conversations:${tenantId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversations',
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        () => fetchConversations()
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        () => fetchConversations()
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [tenantId, fetchConversations]) // eslint-disable-line react-hooks/exhaustive-deps
+    const interval = setInterval(fetchConversations, 5000)
+    return () => clearInterval(interval)
+  }, [fetchConversations])
 
   const filtered = conversations.filter((c) => {
     if (!search.trim()) return true
