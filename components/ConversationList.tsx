@@ -42,6 +42,9 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
       .order('last_message_at', { ascending: false })
       .limit(1, { referencedTable: 'messages' })
 
+    console.log('[ConversationList] data:', data, 'tenantId:', tenantId)
+    const { data: session } = await supabase.auth.getSession()
+    console.log('[ConversationList] session uid:', session?.session?.user?.id)
     if (data) {
       // Normaliza last_message (Supabase retorna array do join)
       const normalized = data.map((c: Conversation & { last_message: unknown }) => ({
