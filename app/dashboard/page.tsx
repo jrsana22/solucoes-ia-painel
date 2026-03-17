@@ -142,7 +142,7 @@ function DashboardContent() {
 
       <main className="flex-1 flex flex-col overflow-hidden bg-white">
         {selected ? (
-          <ConversationThread key={selected.id} conversation={selected} tenantId={tenant.id} />
+          <ConversationThread key={selected.id} conversation={selected} tenantId={tenant.id} onDelete={() => setSelected(null)} />
         ) : (
           <div className="flex h-full items-center justify-center" style={{ background: '#f0f2f5' }}>
             <div className="text-center">
