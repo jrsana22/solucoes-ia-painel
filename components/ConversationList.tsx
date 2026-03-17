@@ -31,24 +31,23 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
   const supabase = createClient()
 
   const fetchConversations = useCallback(async () => {
-    // Busca conversas com contato
-    const { data: convData } = await supabase
+    // 1. Busca conversas
+    const { data: convData, error: convError } = await supabase
       .from('conversations')
-      .select('*, contact:contacts(id, phone, name)')
+      .select('*')
       .eq('tenant_id', tenantId)
       .order('last_message_at', { ascending: false })
 
-    if (!convData) { setLoading(false); return }
+    console.log('[Conv] convData:', convData, 'error:', convError)
+    if (!convData || convData.length === 0) { setLoading(false); return }
 
-    // Busca a última mensagem de cada conversa separadamente
+    // 2. Busca contatos e última mensagem para cada conversa
     const enriched = await Promise.all(convData.map(async (conv) => {
-      const { data: msgs } = await supabase
-        .from('messages')
-        .select('body, direction, sent_by, timestamp, status')
-        .eq('conversation_id', conv.id)
-        .order('timestamp', { ascending: false })
-        .limit(1)
-      return { ...conv, last_message: msgs?.[0] ?? null }
+      const [{ data: contactData }, { data: msgs }] = await Promise.all([
+        supabase.from('contacts').select('id, phone, name').eq('id', conv.contact_id).single(),
+        supabase.from('messages').select('body, direction, sent_by, timestamp, status').eq('conversation_id', conv.id).order('timestamp', { ascending: false }).limit(1),
+      ])
+      return { ...conv, contact: contactData ?? null, last_message: msgs?.[0] ?? null }
     }))
 
     setConversations(enriched as Conversation[])
