@@ -6,61 +6,73 @@ import type { Conversation, Tenant } from '@/types'
 import ConversationList from '@/components/ConversationList'
 import ConversationThread from '@/components/ConversationThread'
 
+interface Profile {
+  id: string
+  name: string
+  role: 'admin' | 'agent'
+  tenant_id: string | null
+}
+
 function DashboardContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const tenantId = searchParams.get('tenant')
+  const tenantIdParam = searchParams.get('tenant')
 
   const [selected, setSelected] = useState<Conversation | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [tenants, setTenants] = useState<Tenant[]>([])
-  const [loadingTenants, setLoadingTenants] = useState(true)
+  const [loading, setLoading] = useState(true)
 
-  // Carrega lista de tenants
+  // Carrega perfil do usuário logado
   useEffect(() => {
-    fetch('/api/tenants')
+    fetch('/api/auth/profile')
       .then(r => r.json())
-      .then(data => {
-        setTenants(data.tenants ?? [])
-        setLoadingTenants(false)
-      })
+      .then(data => { if (data.profile) setProfile(data.profile) })
   }, [])
 
-  // Quando tenants carregam: se não tem tenant na URL, redireciona para o primeiro
+  // Carrega tenants com base no perfil
   useEffect(() => {
-    if (loadingTenants) return
-    if (tenantId) {
-      const found = tenants.find(t => t.id === tenantId)
-      setTenant(found ?? null)
-    } else if (tenants.length > 0) {
+    if (!profile) return
+
+    if (profile.role === 'agent' && profile.tenant_id) {
+      // Agente: busca só o próprio tenant
+      fetch('/api/tenants')
+        .then(r => r.json())
+        .then(data => {
+          const all: Tenant[] = data.tenants ?? []
+          const own = all.find(t => t.id === profile.tenant_id)
+          if (own) {
+            setTenants([own])
+            setTenant(own)
+          }
+          setLoading(false)
+        })
+    } else {
+      // Admin: busca todos os tenants
+      fetch('/api/tenants')
+        .then(r => r.json())
+        .then(data => {
+          const all: Tenant[] = data.tenants ?? []
+          setTenants(all)
+          setLoading(false)
+        })
+    }
+  }, [profile])
+
+  // Admin: define tenant ativo pela URL ou pelo primeiro da lista
+  useEffect(() => {
+    if (!profile || profile.role !== 'admin' || tenants.length === 0) return
+
+    if (tenantIdParam) {
+      const found = tenants.find(t => t.id === tenantIdParam)
+      setTenant(found ?? tenants[0])
+    } else {
       router.replace(`/dashboard?tenant=${tenants[0].id}`)
     }
-  }, [tenantId, tenants, loadingTenants, router])
+  }, [tenantIdParam, tenants, profile, router])
 
-  // Sem tenants cadastrados
-  if (!loadingTenants && tenants.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center" style={{ background: '#f0f2f5' }}>
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <p className="text-gray-700 font-semibold text-lg">Nenhum cliente cadastrado</p>
-          <p className="text-gray-400 text-sm mt-1 mb-5">Cadastre o primeiro cliente para começar a usar o painel.</p>
-          <button
-            onClick={() => router.push('/dashboard/clientes')}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-          >
-            Cadastrar cliente
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (!tenant) {
+  if (loading) {
     return (
       <div className="flex h-full items-center justify-center" style={{ background: '#f0f2f5' }}>
         <svg className="animate-spin w-6 h-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -71,12 +83,34 @@ function DashboardContent() {
     )
   }
 
+  if (tenants.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center" style={{ background: '#f0f2f5' }}>
+        <div className="text-center max-w-sm">
+          <p className="text-gray-700 font-semibold text-lg">Nenhum cliente cadastrado</p>
+          {profile?.role === 'admin' && (
+            <>
+              <p className="text-gray-400 text-sm mt-1 mb-5">Cadastre o primeiro cliente para começar.</p>
+              <button
+                onClick={() => router.push('/dashboard/clientes')}
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+              >
+                Cadastrar cliente
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (!tenant) return null
+
   return (
     <div className="flex h-full">
-      {/* Sidebar — lista de conversas */}
       <aside className="w-80 flex-shrink-0 flex flex-col border-r border-white/10 bg-[#1a2f3a]">
-        {/* Seletor de cliente */}
-        {tenants.length > 1 && (
+        {/* Seletor de cliente — só admin com múltiplos tenants */}
+        {profile?.role === 'admin' && tenants.length > 1 && (
           <div className="px-3 pt-3 pb-1">
             <select
               value={tenant.id}
@@ -87,15 +121,13 @@ function DashboardContent() {
               className="w-full px-3 py-2 rounded-lg bg-white/10 text-white text-xs border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
               {tenants.map(t => (
-                <option key={t.id} value={t.id} className="bg-[#1a2f3a] text-white">
-                  {t.name}
-                </option>
+                <option key={t.id} value={t.id} className="bg-[#1a2f3a] text-white">{t.name}</option>
               ))}
             </select>
           </div>
         )}
 
-        {tenants.length === 1 && (
+        {(profile?.role === 'agent' || tenants.length === 1) && (
           <div className="px-4 pt-3 pb-1">
             <p className="text-white/60 text-xs truncate">{tenant.name}</p>
           </div>
@@ -108,14 +140,9 @@ function DashboardContent() {
         />
       </aside>
 
-      {/* Painel principal — thread da conversa */}
       <main className="flex-1 flex flex-col overflow-hidden bg-white">
         {selected ? (
-          <ConversationThread
-            key={selected.id}
-            conversation={selected}
-            tenantId={tenant.id}
-          />
+          <ConversationThread key={selected.id} conversation={selected} tenantId={tenant.id} />
         ) : (
           <div className="flex h-full items-center justify-center" style={{ background: '#f0f2f5' }}>
             <div className="text-center">
