@@ -27,8 +27,12 @@ function DashboardContent() {
   // Carrega perfil do usuário logado
   useEffect(() => {
     fetch('/api/auth/profile')
-      .then(r => r.json())
+      .then(r => {
+        if (r.status === 401) { window.location.replace('/logout'); return null }
+        return r.json()
+      })
       .then(data => {
+        if (!data) return
         if (data.profile) setProfile(data.profile)
         else setLoading(false)
       })
