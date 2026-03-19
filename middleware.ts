@@ -1,28 +1,48 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // API routes não precisam de autenticação no middleware
-  if (pathname.startsWith('/api')) return NextResponse.next()
+  // API routes e logout não precisam de verificação
+  if (pathname.startsWith('/api') || pathname.startsWith('/logout')) {
+    return NextResponse.next()
+  }
 
-  // Verifica se existe cookie de sessão do Supabase
-  const hasSession = request.cookies.getAll().some(
-    c => c.name.includes('auth-token') && c.value.length > 0
+  const response = NextResponse.next({
+    request: { headers: request.headers },
+  })
+
+  // Verifica sessão real com Supabase
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options)
+          })
+        },
+      },
+    }
   )
 
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/logout')
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const isAuthRoute = pathname.startsWith('/login')
   const isDashboard = pathname.startsWith('/dashboard')
 
-  if (!hasSession && isDashboard) {
+  if (!user && isDashboard) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (hasSession && isAuthRoute) {
+  if (user && isAuthRoute) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  return NextResponse.next()
+  return response
 }
 
 export const config = {
