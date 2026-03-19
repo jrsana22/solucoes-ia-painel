@@ -23,10 +23,8 @@ export async function middleware(request: NextRequest) {
     }
   )
 
- // DEPOIS
-const { data: { session } } = await supabase.auth.getSession()
-const user = session?.user ?? null
-
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user ?? null
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
