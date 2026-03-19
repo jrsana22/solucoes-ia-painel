@@ -24,16 +24,23 @@ export default function ConversationThread({ conversation, tenantId, onDelete }:
   }, [])
 
   const fetchMessages = useCallback(async (isInitial = false) => {
-    const res = await fetch(`/api/messages?conversation_id=${conversation.id}&tenant_id=${tenantId}`)
-    const json = await res.json()
-    const msgs: Message[] = json.messages ?? []
-    setMessages(msgs)
-    if (isInitial) {
-      setLoading(false)
-    } else if (msgs.length > prevCountRef.current) {
-      setTimeout(() => scrollToBottom(true), 50)
+    try {
+      const res = await fetch(`/api/messages?conversation_id=${conversation.id}&tenant_id=${tenantId}`)
+      if (!res.ok) return
+      const json = await res.json()
+      const msgs: Message[] = json.messages ?? []
+      if (isInitial || msgs.length > 0) {
+        setMessages(msgs)
+      }
+      if (isInitial) {
+        setLoading(false)
+      } else if (msgs.length > prevCountRef.current) {
+        setTimeout(() => scrollToBottom(true), 50)
+      }
+      prevCountRef.current = msgs.length
+    } catch {
+      if (isInitial) setLoading(false)
     }
-    prevCountRef.current = msgs.length
   }, [conversation.id, tenantId, scrollToBottom])
 
   // Carrega mensagens iniciais
