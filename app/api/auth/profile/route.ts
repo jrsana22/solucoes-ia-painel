@@ -6,20 +6,22 @@ import { cookies } from 'next/headers'
 export async function GET() {
   const cookieStore = await cookies()
 
-  // Lê o JWT do cookie de sessão do Supabase sem fazer chamada de rede
   let userId: string | null = null
   try {
-    const allCookies = cookieStore.getAll()
-    const authCookie = allCookies.find(c => c.name.includes('auth-token') && !c.name.endsWith('.0') === false || c.name.includes('auth-token'))
+    const authCookie = cookieStore.getAll().find(c => c.name.includes('auth-token'))
 
     if (authCookie?.value) {
-      // O valor pode ser JSON com access_token, ou JSON direto
       let raw = authCookie.value
-      // Tenta decodificar se for URL-encoded
-      try { raw = decodeURIComponent(raw) } catch {}
+
+      // Novo formato Supabase v2.99: "base64-<base64encodedJSON>"
+      if (raw.startsWith('base64-')) {
+        raw = Buffer.from(raw.slice(7), 'base64').toString('utf8')
+      } else {
+        try { raw = decodeURIComponent(raw) } catch {}
+      }
 
       const parsed = JSON.parse(raw)
-      const accessToken = parsed.access_token ?? parsed
+      const accessToken = parsed.access_token
 
       if (typeof accessToken === 'string') {
         const parts = accessToken.split('.')
