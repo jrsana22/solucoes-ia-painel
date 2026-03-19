@@ -5,8 +5,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 // GET /api/auth/profile — retorna perfil do usuário logado
 export async function GET() {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  const user = session?.user ?? null
+  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
