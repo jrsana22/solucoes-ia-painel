@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { Conversation } from '@/types'
-import { createClient } from '@/lib/supabase/client'
 
 interface ConversationListProps {
   tenantId: string
@@ -30,12 +29,18 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
   const [search, setSearch] = useState('')
 
   const fetchConversations = useCallback(async () => {
-    const res = await fetch(`/api/conversations?tenant_id=${tenantId}`)
-    const json = await res.json()
-    if (json.conversations) {
-      setConversations(json.conversations as Conversation[])
+    try {
+      const res = await fetch(`/api/conversations?tenant_id=${tenantId}`)
+      if (!res.ok) return
+      const json = await res.json()
+      if (json.conversations) {
+        setConversations(json.conversations as Conversation[])
+      }
+    } catch {
+      // ignora erros de rede
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [tenantId])
 
   // Carga inicial
@@ -43,36 +48,11 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
     fetchConversations()
   }, [fetchConversations])
 
-  // Realtime: atualiza lista quando chega nova mensagem ou conversa muda
+  // Polling a cada 15 segundos
   useEffect(() => {
-    const supabase = createClient()
-
-    const channel = supabase
-      .channel(`conversations-${tenantId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversations',
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        () => { fetchConversations() }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        () => { fetchConversations() }
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [tenantId, fetchConversations])
+    const interval = setInterval(fetchConversations, 15000)
+    return () => clearInterval(interval)
+  }, [fetchConversations])
 
   const filtered = conversations.filter((c) => {
     if (!search.trim()) return true
@@ -129,12 +109,10 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
                   isSelected ? 'bg-white/20' : ''
                 }`}
               >
-                {/* Avatar */}
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center text-white font-semibold text-sm">
                   {label.charAt(0).toUpperCase()}
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-white font-medium text-sm truncate">{label}</span>
@@ -148,7 +126,6 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
                   )}
                 </div>
 
-                {/* Status indicator */}
                 {conv.status === 'open' && (
                   <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-400" />
                 )}

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { Conversation, Message } from '@/types'
-import { createClient } from '@/lib/supabase/client'
 import MessageBubble from './MessageBubble'
 import ReplyBox from './ReplyBox'
 
@@ -42,33 +41,30 @@ export default function ConversationThread({ conversation, tenantId, onDelete }:
     if (!loading) scrollToBottom()
   }, [loading, scrollToBottom])
 
-  // Realtime: escuta novas mensagens via Supabase
+  // Polling inteligente: só adiciona mensagens novas, nunca substitui
   useEffect(() => {
-    const supabase = createClient()
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/messages?conversation_id=${conversation.id}&tenant_id=${tenantId}`)
+        if (!res.ok) return
+        const json = await res.json()
+        const fetched: Message[] = json.messages ?? []
+        if (fetched.length === 0) return
 
-    const channel = supabase
-      .channel(`messages-${conversation.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversation.id}`,
-        },
-        (payload) => {
-          setMessages(prev => {
-            const exists = prev.some(m => m.id === (payload.new as Message).id)
-            if (exists) return prev
-            return [...prev, payload.new as Message]
-          })
+        setMessages(prev => {
+          const existingIds = new Set(prev.map(m => m.id))
+          const added = fetched.filter(m => !existingIds.has(m.id))
+          if (added.length === 0) return prev // sem novidades, não re-renderiza
           setTimeout(() => scrollToBottom(true), 50)
-        }
-      )
-      .subscribe()
+          return [...prev, ...added]
+        })
+      } catch {
+        // ignora erros de rede no polling
+      }
+    }, 8000)
 
-    return () => { supabase.removeChannel(channel) }
-  }, [conversation.id, scrollToBottom])
+    return () => clearInterval(interval)
+  }, [conversation.id, tenantId, scrollToBottom])
 
   const contactLabel = contact?.name ?? contact?.phone ?? 'Contato'
   const statusColors: Record<string, string> = {
