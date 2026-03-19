@@ -113,8 +113,8 @@ function DashboardContent() {
   return (
     <div className="flex h-full">
       <aside className="w-80 flex-shrink-0 flex flex-col border-r border-white/10 bg-[#1a2f3a]">
-        {/* Seletor de cliente — só admin com múltiplos tenants */}
-        {profile?.role === 'admin' && tenants.length > 1 && (
+        {/* Seletor de agente — admin sempre vê dropdown */}
+        {profile?.role === 'admin' && (
           <div className="px-3 pt-3 pb-1">
             <select
               value={tenant.id}
@@ -131,7 +131,7 @@ function DashboardContent() {
           </div>
         )}
 
-        {(profile?.role === 'agent' || tenants.length === 1) && (
+        {profile?.role === 'agent' && (
           <div className="px-4 pt-3 pb-1">
             <p className="text-white/60 text-xs truncate">{tenant.name}</p>
           </div>
