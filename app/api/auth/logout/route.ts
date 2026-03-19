@@ -6,3 +6,9 @@ export async function POST() {
   await supabase.auth.signOut()
   return NextResponse.json({ success: true })
 }
+
+export async function GET() {
+  const supabase = await createClient()
+  await supabase.auth.signOut()
+  return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_SITE_URL ?? 'https://solucoes-ia-painel.vercel.app'))
+}
