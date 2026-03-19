@@ -43,7 +43,7 @@ function MediaContent({ message }: { message: Message }) {
     )
   }
 
-  if (message.media_type === 'audio') {
+  if (message.media_type === 'audio' || message.media_type === 'ptt') {
     return (
       <audio controls className="max-w-full" style={{ minWidth: 220 }}>
         <source src={mediaUrl} />

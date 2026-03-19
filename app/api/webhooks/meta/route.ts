@@ -66,8 +66,8 @@ export async function POST(req: NextRequest) {
       // Mensagens recebidas
       // -------------------------------------------------------
       for (const msg of value.messages ?? []) {
-        // Suporta: text, audio, image, document
-        const supportedTypes = ['text', 'audio', 'image', 'document']
+        // Suporta: text, audio, ptt (voice note), image, document
+        const supportedTypes = ['text', 'audio', 'ptt', 'image', 'document']
         if (!supportedTypes.includes(msg.type)) continue
 
         // Extrai body e mídia dependendo do tipo
@@ -78,10 +78,10 @@ export async function POST(req: NextRequest) {
         if (msg.type === 'text') {
           if (!msg.text?.body) continue
           body = msg.text.body
-        } else if (msg.type === 'audio') {
+        } else if (msg.type === 'audio' || msg.type === 'ptt') {
           body = '[Áudio]'
           mediaType = 'audio'
-          mediaId = msg.audio?.id ?? null
+          mediaId = msg.audio?.id ?? msg.ptt?.id ?? null
         } else if (msg.type === 'image') {
           body = msg.image?.caption ?? '[Imagem]'
           mediaType = 'image'
