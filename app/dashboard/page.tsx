@@ -45,29 +45,25 @@ function DashboardContent() {
   useEffect(() => {
     if (!profile) return
 
-    if (profile.role === 'agent' && profile.tenant_id) {
-      // Agente: busca só o próprio tenant
-      fetch('/api/tenants')
-        .then(r => r.json())
-        .then(data => {
-          const all: Tenant[] = data.tenants ?? []
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+
+    fetch('/api/tenants', { signal: controller.signal })
+      .then(r => r.json())
+      .then(data => {
+        clearTimeout(timeout)
+        const all: Tenant[] = data.tenants ?? []
+        if (profile.role === 'agent' && profile.tenant_id) {
           const own = all.find(t => t.id === profile.tenant_id)
-          if (own) {
-            setTenants([own])
-            setTenant(own)
-          }
-          setLoading(false)
-        })
-    } else {
-      // Admin: busca todos os tenants
-      fetch('/api/tenants')
-        .then(r => r.json())
-        .then(data => {
-          const all: Tenant[] = data.tenants ?? []
+          if (own) { setTenants([own]); setTenant(own) }
+        } else {
           setTenants(all)
-          setLoading(false)
-        })
-    }
+        }
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+
+    return () => { clearTimeout(timeout); controller.abort() }
   }, [profile])
 
   // Admin: define tenant ativo pela URL ou pelo primeiro da lista
