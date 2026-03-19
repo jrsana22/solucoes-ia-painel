@@ -11,7 +11,7 @@ export function middleware(request: NextRequest) {
     c => c.name.includes('auth-token') && c.value.length > 0
   )
 
-  const isAuthRoute = pathname.startsWith('/login')
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/logout')
   const isDashboard = pathname.startsWith('/dashboard')
 
   if (!hasSession && isDashboard) {
