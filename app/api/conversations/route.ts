@@ -11,9 +11,10 @@ export async function GET(req: NextRequest) {
 
   const supabase = createServiceClient()
 
+  // Fetch conversations with contact joined in a single query to avoid N+1 connection pressure
   const { data: conversations, error } = await supabase
     .from('conversations')
-    .select('*')
+    .select('*, contact:contacts(id, phone, name)')
     .eq('tenant_id', tenantId)
     .order('last_message_at', { ascending: false })
 
@@ -21,13 +22,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Busca contatos e última mensagem para cada conversa
-  const enriched = await Promise.all((conversations ?? []).map(async (conv) => {
-    const [{ data: contact }, { data: msgs }] = await Promise.all([
-      supabase.from('contacts').select('id, phone, name').eq('id', conv.contact_id).single(),
-      supabase.from('messages').select('body, direction, sent_by, timestamp, status').eq('conversation_id', conv.id).order('timestamp', { ascending: false }).limit(1),
-    ])
-    return { ...conv, contact: contact ?? null, last_message: msgs?.[0] ?? null }
+  if (!conversations || conversations.length === 0) {
+    return NextResponse.json({ conversations: [] })
+  }
+
+  // Fetch last message for each conversation in a single query
+  const conversationIds = conversations.map(c => c.id)
+  const { data: allMessages } = await supabase
+    .from('messages')
+    .select('conversation_id, body, direction, sent_by, timestamp, status')
+    .in('conversation_id', conversationIds)
+    .order('timestamp', { ascending: false })
+
+  // Build a map of conversation_id -> last message
+  const lastMessageMap: Record<string, typeof allMessages extends (infer T)[] | null ? T : never> = {}
+  if (allMessages) {
+    for (const msg of allMessages) {
+      if (!lastMessageMap[msg.conversation_id]) {
+        lastMessageMap[msg.conversation_id] = msg
+      }
+    }
+  }
+
+  const enriched = conversations.map(conv => ({
+    ...conv,
+    last_message: lastMessageMap[conv.id] ?? null,
   }))
 
   return NextResponse.json({ conversations: enriched })

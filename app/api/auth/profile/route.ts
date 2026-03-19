@@ -8,16 +8,18 @@ export async function GET() {
 
   let userId: string | null = null
   try {
+    // Cookie name: sb-yhlzrmnuikvvuppwmbxu-auth-token
+    // Cookie value format: "base64-{base64url encoded JSON with access_token field}"
     const authCookie = cookieStore.getAll().find(c => c.name.includes('auth-token'))
 
     if (authCookie?.value) {
       let raw = authCookie.value
 
-      // Novo formato Supabase v2.99: "base64-<base64encodedJSON>"
+      // Supabase v2.99+ format: "base64-<base64url encoded JSON>"
       if (raw.startsWith('base64-')) {
-        raw = Buffer.from(raw.slice(7), 'base64').toString('utf8')
+        raw = Buffer.from(raw.slice(7), 'base64url').toString('utf8')
       } else {
-        try { raw = decodeURIComponent(raw) } catch {}
+        try { raw = decodeURIComponent(raw) } catch { /* ignore */ }
       }
 
       const parsed = JSON.parse(raw)
@@ -26,7 +28,8 @@ export async function GET() {
       if (typeof accessToken === 'string') {
         const parts = accessToken.split('.')
         if (parts.length === 3) {
-          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'))
+          // JWT payload is base64url encoded
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))
           userId = payload.sub ?? null
         }
       }
@@ -40,13 +43,13 @@ export async function GET() {
   }
 
   const serviceClient = createServiceClient()
-  const { data: profile } = await serviceClient
+  const { data: profile, error } = await serviceClient
     .from('profiles')
     .select('id, name, role, tenant_id')
     .eq('id', userId)
     .single()
 
-  if (!profile) {
+  if (error || !profile) {
     return NextResponse.json({ error: 'Perfil não encontrado' }, { status: 404 })
   }
 
