@@ -26,19 +26,13 @@ function DashboardContent() {
 
   // Carrega perfil do usuário logado
   useEffect(() => {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
-
-    fetch('/api/auth/profile', { signal: controller.signal })
+    fetch('/api/auth/profile')
       .then(r => r.json())
       .then(data => {
-        clearTimeout(timeout)
         if (data.profile) setProfile(data.profile)
         else setLoading(false)
       })
       .catch(() => setLoading(false))
-
-    return () => { clearTimeout(timeout); controller.abort() }
   }, [])
 
   // Carrega tenants com base no perfil
