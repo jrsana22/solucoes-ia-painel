@@ -39,16 +39,9 @@ function DashboardContent() {
       .catch(() => setLoading(false))
   }, [])
 
-  // Admin vai direto para gestão de agentes, não vê conversas
+  // Carrega tenants com base no perfil
   useEffect(() => {
-    if (profile?.role === 'admin') {
-      router.replace('/dashboard/clientes')
-    }
-  }, [profile, router])
-
-  // Carrega tenants com base no perfil (só agentes chegam aqui)
-  useEffect(() => {
-    if (!profile || profile.role === 'admin') return
+    if (!profile) return
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 8000)
