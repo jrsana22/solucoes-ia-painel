@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { Conversation } from '@/types'
+import { createClient } from '@/lib/supabase/client'
 
 interface ConversationListProps {
   tenantId: string
@@ -37,15 +38,41 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
     setLoading(false)
   }, [tenantId])
 
+  // Carga inicial
   useEffect(() => {
     fetchConversations()
   }, [fetchConversations])
 
-  // Polling a cada 5 segundos
+  // Realtime: atualiza lista quando chega nova mensagem ou conversa muda
   useEffect(() => {
-    const interval = setInterval(fetchConversations, 5000)
-    return () => clearInterval(interval)
-  }, [fetchConversations])
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel(`conversations-${tenantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversations',
+          filter: `tenant_id=eq.${tenantId}`,
+        },
+        () => { fetchConversations() }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `tenant_id=eq.${tenantId}`,
+        },
+        () => { fetchConversations() }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [tenantId, fetchConversations])
 
   const filtered = conversations.filter((c) => {
     if (!search.trim()) return true
