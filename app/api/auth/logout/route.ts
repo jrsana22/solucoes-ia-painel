@@ -7,8 +7,12 @@ export async function POST() {
   return NextResponse.json({ success: true })
 }
 
-export async function GET() {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
-  return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_SITE_URL ?? 'https://solucoes-ia-painel.vercel.app'))
+export async function GET(req: import('next/server').NextRequest) {
+  try { const supabase = await createClient(); await supabase.auth.signOut() } catch { /* ignora */ }
+  const res = NextResponse.redirect('https://solucoes-ia-painel.vercel.app/login')
+  // Apaga todos os cookies que existem na requisição
+  req.cookies.getAll().forEach(c => {
+    res.cookies.set(c.name, '', { maxAge: 0, path: '/' })
+  })
+  return res
 }
