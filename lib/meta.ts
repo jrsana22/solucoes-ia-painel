@@ -70,6 +70,7 @@ export interface MetaWebhookPayload {
           type: string
           text?: { body: string }
           audio?: { id: string; mime_type?: string }
+          ptt?: { id: string; mime_type?: string }
           image?: { id: string; caption?: string; mime_type?: string }
           document?: { id: string; filename?: string; mime_type?: string }
           sticker?: { id: string; mime_type?: string }
