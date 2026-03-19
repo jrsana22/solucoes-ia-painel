@@ -127,22 +127,25 @@ export async function POST(req: NextRequest) {
         if (!conversation) continue
 
         // Insere a mensagem (evita duplicatas pelo meta_message_id)
-        const { error: msgError } = await supabase.from('messages').upsert(
-          {
-            conversation_id: conversation.id,
-            tenant_id: tenant.id,
-            direction: 'inbound',
-            body,
-            media_type: mediaType,
-            media_id: mediaId,
-            status: 'delivered',
-            timestamp: new Date(Number(msg.timestamp) * 1000).toISOString(),
-            sent_by: 'system',
-            meta_message_id: msg.id,
-          },
-          { onConflict: 'meta_message_id', ignoreDuplicates: true }
-        )
-        if (msgError) console.error('[webhook] message error:', msgError)
+        const { error: msgError } = await supabase.from('messages').insert({
+          conversation_id: conversation.id,
+          tenant_id: tenant.id,
+          direction: 'inbound',
+          body,
+          media_type: mediaType,
+          media_id: mediaId,
+          status: 'delivered',
+          timestamp: new Date(Number(msg.timestamp) * 1000).toISOString(),
+          sent_by: 'system',
+          meta_message_id: msg.id,
+        })
+        if (msgError) {
+          if (msgError.code === '23505') {
+            console.log('[webhook] mensagem duplicada, ignorando:', msg.id)
+          } else {
+            console.error('[webhook] message error:', msgError)
+          }
+        }
 
         // Atualiza last_message_at da conversa
         await supabase
