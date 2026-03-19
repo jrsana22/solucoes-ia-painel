@@ -13,7 +13,13 @@ export async function GET() {
     const authCookie = allCookies.find(c => c.name.includes('auth-token'))
     if (authCookie?.value) {
       let raw = authCookie.value
-      try { raw = decodeURIComponent(raw) } catch {}
+
+      if (raw.startsWith('base64-')) {
+        raw = Buffer.from(raw.slice(7), 'base64').toString('utf8')
+      } else {
+        try { raw = decodeURIComponent(raw) } catch {}
+      }
+
       const parsed = JSON.parse(raw)
       const accessToken = parsed.access_token
       if (typeof accessToken === 'string') {
