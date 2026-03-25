@@ -9,9 +9,25 @@ interface ConversationThreadProps {
   conversation: Conversation
   tenantId: string
   onDelete?: () => void
+  onBack?: () => void
 }
 
-export default function ConversationThread({ conversation, tenantId, onDelete }: ConversationThreadProps) {
+function formatDateLabel(timestamp: string): string {
+  const date = new Date(timestamp)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+
+  if (date.toDateString() === today.toDateString()) return 'Hoje'
+  if (date.toDateString() === yesterday.toDateString()) return 'Ontem'
+  return date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function getDateKey(timestamp: string): string {
+  return new Date(timestamp).toDateString()
+}
+
+export default function ConversationThread({ conversation, tenantId, onDelete, onBack }: ConversationThreadProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -54,7 +70,7 @@ export default function ConversationThread({ conversation, tenantId, onDelete }:
         setMessages(prev => {
           const existingIds = new Set(prev.map(m => m.id))
           const added = fetched.filter(m => !existingIds.has(m.id))
-          if (added.length === 0) return prev // sem novidades, não re-renderiza
+          if (added.length === 0) return prev
           setTimeout(() => scrollToBottom(true), 50)
           return [...prev, ...added]
         })
@@ -81,17 +97,30 @@ export default function ConversationThread({ conversation, tenantId, onDelete }:
   return (
     <div className="flex flex-col h-full">
       {/* Header da conversa */}
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white shadow-sm">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+      <div className="flex items-center gap-2 px-3 md:px-6 py-3 md:py-4 border-b border-gray-200 bg-white shadow-sm">
+        {/* Botão voltar — só aparece no mobile */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="md:hidden flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition"
+            title="Voltar"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+
+        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
           {contactLabel.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-semibold text-gray-900 truncate">{contactLabel}</h2>
+          <h2 className="font-semibold text-gray-900 truncate text-sm md:text-base">{contactLabel}</h2>
           {contact?.phone && contact?.name && (
             <p className="text-xs text-gray-500">{contact.phone}</p>
           )}
         </div>
-        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColors[conversation.status]}`}>
+        <span className={`text-xs font-medium px-2 md:px-2.5 py-1 rounded-full flex-shrink-0 ${statusColors[conversation.status]}`}>
           {statusLabels[conversation.status]}
         </span>
         <button
@@ -100,7 +129,7 @@ export default function ConversationThread({ conversation, tenantId, onDelete }:
             await fetch(`/api/conversations/${conversation.id}`, { method: 'DELETE' })
             onDelete?.()
           }}
-          className="ml-2 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
+          className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
           title="Excluir conversa"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -127,9 +156,25 @@ export default function ConversationThread({ conversation, tenantId, onDelete }:
           </div>
         ) : (
           <>
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
-            ))}
+            {messages.map((msg, index) => {
+              const prevMsg = messages[index - 1]
+              const showDateSeparator = !prevMsg || getDateKey(msg.timestamp) !== getDateKey(prevMsg.timestamp)
+
+              return (
+                <div key={msg.id}>
+                  {showDateSeparator && (
+                    <div className="flex items-center gap-3 px-4 my-3">
+                      <div className="flex-1 h-px bg-gray-300/60" />
+                      <span className="text-[11px] text-gray-500 font-medium bg-[#f0f2f5] px-2 py-0.5 rounded-full border border-gray-300/50 whitespace-nowrap">
+                        {formatDateLabel(msg.timestamp)}
+                      </span>
+                      <div className="flex-1 h-px bg-gray-300/60" />
+                    </div>
+                  )}
+                  <MessageBubble message={msg} />
+                </div>
+              )
+            })}
           </>
         )}
         <div ref={bottomRef} />

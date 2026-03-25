@@ -90,7 +90,7 @@ function DashboardContent() {
   if (tenants.length === 0) {
     return (
       <div className="flex h-full items-center justify-center" style={{ background: '#f0f2f5' }}>
-        <div className="text-center max-w-sm">
+        <div className="text-center max-w-sm px-4">
           <p className="text-gray-700 font-semibold text-lg">Nenhum cliente cadastrado</p>
           {profile?.role === 'admin' && (
             <>
@@ -112,7 +112,12 @@ function DashboardContent() {
 
   return (
     <div className="flex h-full">
-      <aside className="w-80 flex-shrink-0 flex flex-col border-r border-white/10 bg-[#1a2f3a]">
+      {/* Sidebar — ocupa tela cheia no mobile quando nenhuma conversa selecionada */}
+      <aside
+        className={`flex-shrink-0 flex flex-col border-r border-white/10 bg-[#1a2f3a] transition-all
+          ${selected ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}
+        `}
+      >
         {/* Seletor de agente — admin sempre vê dropdown */}
         {profile?.role === 'admin' && (
           <div className="px-3 pt-3 pb-1">
@@ -144,9 +149,20 @@ function DashboardContent() {
         />
       </aside>
 
-      <main className="flex-1 flex flex-col overflow-hidden bg-white">
+      {/* Main — ocupa tela cheia no mobile quando conversa selecionada */}
+      <main
+        className={`flex-col overflow-hidden bg-white
+          ${selected ? 'flex w-full md:flex-1' : 'hidden md:flex md:flex-1'}
+        `}
+      >
         {selected ? (
-          <ConversationThread key={selected.id} conversation={selected} tenantId={tenant.id} onDelete={() => setSelected(null)} />
+          <ConversationThread
+            key={selected.id}
+            conversation={selected}
+            tenantId={tenant.id}
+            onDelete={() => setSelected(null)}
+            onBack={() => setSelected(null)}
+          />
         ) : (
           <div className="flex h-full items-center justify-center" style={{ background: '#f0f2f5' }}>
             <div className="text-center">

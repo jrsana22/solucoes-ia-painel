@@ -81,7 +81,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
   if (!isOutbound) {
     return (
       <div className="flex justify-start mb-2 px-4">
-        <div className="max-w-[70%]">
+        <div className="max-w-[85%] md:max-w-[70%]">
           <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm">
             <MediaContent message={message} />
             <div className="flex justify-end mt-1">
@@ -98,7 +98,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <div className="flex justify-end mb-2 px-4">
-      <div className="max-w-[70%]">
+      <div className="max-w-[85%] md:max-w-[70%]">
         <div className="flex justify-end mb-0.5">
           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
             message.sent_by === 'agent'
