@@ -151,7 +151,7 @@ function DashboardContent() {
 
       {/* Main — ocupa tela cheia no mobile quando conversa selecionada */}
       <main
-        className={`flex-col overflow-hidden bg-white min-h-0
+        className={`flex-col overflow-hidden bg-white min-h-0 h-full
           ${selected ? 'flex w-full md:flex-1' : 'hidden md:flex md:flex-1'}
         `}
       >

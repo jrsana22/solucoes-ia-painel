@@ -34,7 +34,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isAdmin = profile?.role === 'admin'
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
+    <div className="flex flex-col bg-gray-100" style={{ height: '100dvh' }}>
       <header className="flex-shrink-0 flex items-center justify-between px-3 md:px-6 h-12 md:h-14 bg-[#1a2f3a] shadow-md z-10">
         <div className="flex items-center gap-3 md:gap-6">
           {/* Logo */}
