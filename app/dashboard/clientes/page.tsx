@@ -38,6 +38,7 @@ export default function ClientesPage() {
     await fetch(`/api/tenants/${id}`, { method: 'DELETE' })
     setTenants(prev => prev.filter(t => t.id !== id))
     setDeleting(null)
+    router.refresh()
   }
 
   return (
