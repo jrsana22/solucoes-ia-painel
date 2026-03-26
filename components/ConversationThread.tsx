@@ -95,9 +95,9 @@ export default function ConversationThread({ conversation, tenantId, onDelete, o
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header da conversa */}
-      <div className="flex items-center gap-2 px-3 md:px-6 py-3 md:py-4 border-b border-gray-200 bg-white shadow-sm">
+    <div className="flex flex-col h-full min-h-0">
+      {/* Header da conversa — sticky para não sumir ao rolar */}
+      <div className="sticky top-0 z-10 flex items-center gap-2 px-3 md:px-6 py-3 md:py-4 border-b border-gray-200 bg-white shadow-sm">
         {/* Botão voltar — só aparece no mobile */}
         {onBack && (
           <button

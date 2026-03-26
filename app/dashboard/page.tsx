@@ -111,10 +111,10 @@ function DashboardContent() {
   if (!tenant) return null
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full min-h-0">
       {/* Sidebar — ocupa tela cheia no mobile quando nenhuma conversa selecionada */}
       <aside
-        className={`flex-shrink-0 flex flex-col border-r border-white/10 bg-[#1a2f3a] transition-all
+        className={`flex-shrink-0 flex flex-col border-r border-white/10 bg-[#1a2f3a] min-h-0
           ${selected ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}
         `}
       >
@@ -151,7 +151,7 @@ function DashboardContent() {
 
       {/* Main — ocupa tela cheia no mobile quando conversa selecionada */}
       <main
-        className={`flex-col overflow-hidden bg-white
+        className={`flex-col overflow-hidden bg-white min-h-0
           ${selected ? 'flex w-full md:flex-1' : 'hidden md:flex md:flex-1'}
         `}
       >
