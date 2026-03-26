@@ -27,12 +27,14 @@ export async function GET(req: NextRequest) {
   }
 
   // Fetch last message for each conversation in a single query
+  // LIMIT to conversationIds.length * 10 rows to avoid fetching full history
   const conversationIds = conversations.map(c => c.id)
   const { data: allMessages } = await supabase
     .from('messages')
     .select('conversation_id, body, direction, sent_by, timestamp, status')
     .in('conversation_id', conversationIds)
     .order('timestamp', { ascending: false })
+    .limit(Math.max(conversationIds.length * 10, 100))
 
   // Build a map of conversation_id -> last message
   const lastMessageMap: Record<string, typeof allMessages extends (infer T)[] | null ? T : never> = {}
