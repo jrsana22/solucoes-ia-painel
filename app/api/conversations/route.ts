@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
     .select('*, contact:contacts(id, phone, name)')
     .eq('tenant_id', tenantId)
     .order('last_message_at', { ascending: false })
+    .limit(100)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
