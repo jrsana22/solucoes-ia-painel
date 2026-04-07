@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     .select('conversation_id, body, direction, sent_by, timestamp, status')
     .in('conversation_id', conversationIds)
     .order('timestamp', { ascending: false })
-    .limit(Math.max(conversationIds.length * 10, 100))
+    .limit(conversationIds.length * 50)
 
   // Build a map of conversation_id -> last message
   const lastMessageMap: Record<string, typeof allMessages extends (infer T)[] | null ? T : never> = {}
