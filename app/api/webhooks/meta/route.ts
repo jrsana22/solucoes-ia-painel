@@ -108,23 +108,39 @@ export async function POST(req: NextRequest) {
         if (contactError) console.error('[webhook] contact error:', contactError)
         if (!contact) continue
 
-        // Upsert da conversa (abre se não existe)
-        const { data: conversation, error: convError } = await supabase
+        // Busca conversa existente para este contato
+        const msgTimestamp = new Date(Number(msg.timestamp) * 1000).toISOString()
+        const { data: existingConv } = await supabase
           .from('conversations')
-          .upsert(
-            {
-              tenant_id: tenant.id,
-              contact_id: contact.id,
-              status: 'open',
-              last_message_at: new Date(Number(msg.timestamp) * 1000).toISOString(),
-            },
-            { onConflict: 'tenant_id,contact_id', ignoreDuplicates: false }
-          )
           .select('id')
+          .eq('tenant_id', tenant.id)
+          .eq('contact_id', contact.id)
+          .order('last_message_at', { ascending: false })
+          .limit(1)
           .single()
 
-        if (convError) console.error('[webhook] conversation error:', convError)
-        if (!conversation) continue
+        let conversationId: string
+
+        if (existingConv) {
+          // Reabre e atualiza a conversa existente
+          await supabase
+            .from('conversations')
+            .update({ status: 'open', last_message_at: msgTimestamp })
+            .eq('id', existingConv.id)
+          conversationId = existingConv.id
+        } else {
+          // Cria nova conversa apenas se não existir nenhuma
+          const { data: newConv, error: convError } = await supabase
+            .from('conversations')
+            .insert({ tenant_id: tenant.id, contact_id: contact.id, status: 'open', last_message_at: msgTimestamp })
+            .select('id')
+            .single()
+          if (convError) { console.error('[webhook] conversation error:', convError); continue }
+          if (!newConv) continue
+          conversationId = newConv.id
+        }
+
+        const conversation = { id: conversationId }
 
         // Insere a mensagem (evita duplicatas pelo meta_message_id)
         const { error: msgError } = await supabase.from('messages').insert({

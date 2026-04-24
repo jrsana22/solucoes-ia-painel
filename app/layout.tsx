@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Soluções de IA — Painel de Atendimento",
   description: "Painel de monitoramento e atendimento via WhatsApp Business API",
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
