@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { Conversation } from '@/types'
+import { contactLabel, avatarChar } from '@/lib/formatPhone'
 
 interface ConversationListProps {
   tenantId: string
@@ -17,9 +18,7 @@ function timeAgo(dateStr: string): string {
   if (diff < 60) return 'agora'
   if (diff < 3600) return `${Math.floor(diff / 60)}min`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`
-  if (diff < 604800) {
-    return date.toLocaleDateString('pt-BR', { weekday: 'short' })
-  }
+  if (diff < 604800) return date.toLocaleDateString('pt-BR', { weekday: 'short' })
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
@@ -33,9 +32,7 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
       const res = await fetch(`/api/conversations?tenant_id=${tenantId}`)
       if (!res.ok) return
       const json = await res.json()
-      if (json.conversations) {
-        setConversations(json.conversations as Conversation[])
-      }
+      if (json.conversations) setConversations(json.conversations as Conversation[])
     } catch {
       // ignora erros de rede
     } finally {
@@ -43,12 +40,8 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
     }
   }, [tenantId])
 
-  // Carga inicial
-  useEffect(() => {
-    fetchConversations()
-  }, [fetchConversations])
+  useEffect(() => { fetchConversations() }, [fetchConversations])
 
-  // Polling a cada 15 segundos
   useEffect(() => {
     const interval = setInterval(fetchConversations, 15000)
     return () => clearInterval(interval)
@@ -63,11 +56,15 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
   })
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Search */}
       <div className="px-3 py-2 border-b border-white/10">
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" strokeWidth={2}
+          >
             <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
           </svg>
           <input
@@ -75,7 +72,7 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar conversa…"
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-white/10 text-white placeholder-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 border border-white/10"
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-white/10 text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 border border-white/10"
           />
         </div>
       </div>
@@ -96,7 +93,8 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
         ) : (
           filtered.map((conv) => {
             const isSelected = conv.id === selectedId
-            const label = conv.contact?.name ?? conv.contact?.phone ?? 'Contato'
+            const label = contactLabel(conv.contact?.name, conv.contact?.phone)
+            const avatar = avatarChar(conv.contact?.name, conv.contact?.phone)
             const preview = conv.last_message?.body
             const time = conv.last_message_at ? timeAgo(conv.last_message_at) : ''
             const isInbound = conv.last_message?.direction === 'inbound'
@@ -109,25 +107,25 @@ export default function ConversationList({ tenantId, selectedId, onSelect }: Con
                   isSelected ? 'bg-white/20' : ''
                 }`}
               >
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center text-white font-semibold text-sm">
-                  {label.charAt(0).toUpperCase()}
+                <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center text-white font-semibold text-sm border border-white/10">
+                  {avatar}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-white font-medium text-sm truncate">{label}</span>
-                    <span className="text-gray-300 text-xs flex-shrink-0">{time}</span>
+                    <span className="text-white/40 text-[11px] flex-shrink-0">{time}</span>
                   </div>
                   {preview && (
-                    <p className="text-gray-300 text-xs truncate mt-0.5">
-                      {!isInbound && <span className="text-gray-400">Você: </span>}
+                    <p className="text-white/40 text-xs truncate mt-0.5">
+                      {!isInbound && <span className="text-white/30">Você: </span>}
                       {preview}
                     </p>
                   )}
                 </div>
 
                 {conv.status === 'open' && (
-                  <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 )}
               </button>
             )

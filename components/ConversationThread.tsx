@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import type { Conversation, Message } from '@/types'
 import MessageBubble from './MessageBubble'
 import ReplyBox from './ReplyBox'
+import { contactLabel, avatarChar, formatPhone } from '@/lib/formatPhone'
 
 interface ConversationThreadProps {
   conversation: Conversation
@@ -38,7 +39,6 @@ export default function ConversationThread({ conversation, tenantId, onDelete, o
     bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant' })
   }, [])
 
-  // Carrega mensagens iniciais
   useEffect(() => {
     setLoading(true)
     setMessages([])
@@ -52,12 +52,10 @@ export default function ConversationThread({ conversation, tenantId, onDelete, o
       .catch(() => setLoading(false))
   }, [conversation.id, tenantId])
 
-  // Scroll para o final ao carregar
   useEffect(() => {
     if (!loading) scrollToBottom()
   }, [loading, scrollToBottom])
 
-  // Polling inteligente: só adiciona mensagens novas, nunca substitui
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -82,7 +80,9 @@ export default function ConversationThread({ conversation, tenantId, onDelete, o
     return () => clearInterval(interval)
   }, [conversation.id, tenantId, scrollToBottom])
 
-  const contactLabel = contact?.name ?? contact?.phone ?? 'Contato'
+  const label = contactLabel(contact?.name, contact?.phone)
+  const avatar = avatarChar(contact?.name, contact?.phone)
+
   const statusColors: Record<string, string> = {
     open: 'bg-emerald-100 text-emerald-700',
     pending: 'bg-yellow-100 text-yellow-700',
@@ -97,8 +97,8 @@ export default function ConversationThread({ conversation, tenantId, onDelete, o
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header da conversa */}
-      <div className="flex-shrink-0 flex items-center gap-2 px-3 md:px-6 py-3 md:py-4 border-b border-gray-200 bg-white shadow-sm">
-        {/* Botão voltar — só aparece no mobile */}
+      <div className="flex-shrink-0 flex items-center gap-3 px-3 md:px-5 py-3 border-b border-gray-200 bg-white shadow-sm">
+        {/* Botão voltar — só mobile */}
         {onBack && (
           <button
             onClick={onBack}
@@ -111,18 +111,32 @@ export default function ConversationThread({ conversation, tenantId, onDelete, o
           </button>
         )}
 
-        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-          {contactLabel.charAt(0).toUpperCase()}
+        {/* Avatar */}
+        <div className="flex-shrink-0 w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+          {avatar}
         </div>
+
+        {/* Nome / número */}
         <div className="flex-1 min-w-0">
-          <h2 className="font-semibold text-gray-900 truncate text-sm md:text-base">{contactLabel}</h2>
+          <h2 className="font-semibold text-gray-900 truncate text-sm md:text-base leading-tight">
+            {label}
+          </h2>
+          {/* Mostra telefone formatado como subtítulo quando o contato tem nome */}
           {contact?.phone && contact?.name && (
-            <p className="text-xs text-gray-500">{contact.phone}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{formatPhone(contact.phone)}</p>
+          )}
+          {/* Quando só tem telefone (sem nome), mostra o número bruto do WA como subtítulo */}
+          {contact?.phone && !contact?.name && (
+            <p className="text-xs text-gray-400 mt-0.5">WhatsApp</p>
           )}
         </div>
-        <span className={`text-xs font-medium px-2 md:px-2.5 py-1 rounded-full flex-shrink-0 ${statusColors[conversation.status]}`}>
+
+        {/* Badge status */}
+        <span className={`flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${statusColors[conversation.status]}`}>
           {statusLabels[conversation.status]}
         </span>
+
+        {/* Botão excluir */}
         <button
           onClick={async () => {
             if (!confirm('Excluir esta conversa e todas as mensagens?')) return
@@ -164,11 +178,11 @@ export default function ConversationThread({ conversation, tenantId, onDelete, o
                 <div key={msg.id}>
                   {showDateSeparator && (
                     <div className="flex items-center gap-3 px-4 my-3">
-                      <div className="flex-1 h-px bg-gray-300/60" />
-                      <span className="text-[11px] text-gray-500 font-medium bg-[#f0f2f5] px-2 py-0.5 rounded-full border border-gray-300/50 whitespace-nowrap">
+                      <div className="flex-1 h-px bg-gray-300/50" />
+                      <span className="text-[11px] text-gray-500 font-medium bg-[#f0f2f5] px-2.5 py-0.5 rounded-full border border-gray-300/50 whitespace-nowrap">
                         {formatDateLabel(msg.timestamp)}
                       </span>
-                      <div className="flex-1 h-px bg-gray-300/60" />
+                      <div className="flex-1 h-px bg-gray-300/50" />
                     </div>
                   )}
                   <MessageBubble message={msg} />
@@ -181,10 +195,7 @@ export default function ConversationThread({ conversation, tenantId, onDelete, o
       </div>
 
       {/* Caixa de resposta */}
-      <ReplyBox
-        conversationId={conversation.id}
-        tenantId={tenantId}
-      />
+      <ReplyBox conversationId={conversation.id} tenantId={tenantId} />
     </div>
   )
 }
