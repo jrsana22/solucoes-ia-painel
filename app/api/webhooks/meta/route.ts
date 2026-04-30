@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { MetaWebhookPayload } from '@/lib/meta'
 
+async function forwardToN8n(url: string, body: unknown, retries = 3): Promise<void> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 8000)
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+      clearTimeout(timer)
+      if (res.ok) return
+      console.error(`[webhook] n8n respondeu ${res.status} (tentativa ${attempt})`)
+    } catch (err) {
+      console.error(`[webhook] n8n forward error (tentativa ${attempt}):`, err)
+      if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * attempt))
+    }
+  }
+}
+
 // ---------------------------------------------------------------
 // GET — Verificação do webhook pela Meta
 // A Meta faz uma requisição GET para confirmar o endpoint antes
@@ -169,14 +190,10 @@ export async function POST(req: NextRequest) {
           .update({ last_message_at: new Date(Number(msg.timestamp) * 1000).toISOString() })
           .eq('id', conversation.id)
 
-        // Encaminha para o webhook do n8n do cliente (não bloqueia a resposta)
+        // Encaminha para o webhook do n8n do cliente (aguarda com retry)
         const n8nUrl = (tenant as { id: string; n8n_webhook_url?: string }).n8n_webhook_url
         if (n8nUrl) {
-          fetch(n8nUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(change.value),
-          }).catch(err => console.error('[webhook] n8n forward error:', err))
+          await forwardToN8n(n8nUrl, change.value)
         }
       }
 
